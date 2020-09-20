@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Femicides.API.Controllers
 {
+    [Route("api/[controller]")]
     public class ApiController : ControllerBase
     {
         [NonAction]
