@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,11 +6,10 @@ using Femicides.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Primitives;
 
 namespace Femicides.API.Controllers
 {
-    public class CityController : ApiController
+    public class CityController : ApiController // todo: const select statement
     {
         private readonly IMemoryCache memoryCache;
         public CityController(IMemoryCache memCache) => memoryCache = memCache;
@@ -38,10 +36,10 @@ namespace Femicides.API.Controllers
                 return Error(404);
             }
             var cities = await GetAllCityAsync();
-            KeyValuePair<string, StringValues>[] requestedQueries = null;
+            var requestedQueries = Request.Query.ToArray();
+
             if(Request.QueryString.HasValue)
             {
-                requestedQueries = Request.Query.ToArray();
                 if(requestedQueries.Count() == 1 && requestedQueries[0].Key.ToLower() == "page")
                 {
                     goto breakfilter;
@@ -77,18 +75,67 @@ namespace Femicides.API.Controllers
             return Error(404);
         }
 
-
-
-        [HttpGet("{values}")]
-        public async Task<IActionResult> GetMultipleByIds([FromRoute]string values)
+        [HttpGet("{Ids}")]
+        public async Task<IActionResult> GetMultipleByIds([FromRoute]MultipleModel value)
         {
-            return Succes("You wait patiently in line");
+            if (!ModelState.IsValid)
+            {
+                return Error(400, ModelState.Values.SelectMany(v => v.Errors).FirstOrDefault().ErrorMessage);
+            }
+
+            var cities = await GetAllCityAsync();
+            var idsArr = value.Ids.Split(",");
+            var requestedCities = new List<City>();
+
+            foreach (var item in idsArr)
+            {
+                if(requestedCities.Any(x => x.Id == int.Parse(item)))
+                {
+                    continue;
+                }
+
+                var city = cities.Where(x => x.Id == int.Parse(item)).FirstOrDefault();
+
+                if (city != null)
+                {
+                    requestedCities.Add(city);
+                }
+            }
+
+            if (requestedCities.Count > 0)
+            {
+                var returnData = requestedCities.Select(s => new
+                {
+                    s.Id,
+                    s.Name,
+                    s.FilterUrl,
+                    s.Url,
+                    victimCount = s.Victim.Count
+                }).ToList();
+
+                return Succes(null, returnData);
+            }
+
+            return Error(404);
         }
 
         [HttpGet("{value:int}")]
         public async Task<IActionResult> GetSingleById([FromRoute]int value)
         {
-            return Succes("I will make you coffee with extra cream");
+            var cities = await GetAllCityAsync();
+            var city = cities.Where(x=> x.Id == value).Select(s => new
+            {
+                s.Id,
+                s.Name,
+                s.FilterUrl,
+                s.Url,
+                victimCount = s.Victim.Count
+            }).FirstOrDefault();
+            if(city != null)
+            {
+                return Succes(null, city);
+            }
+            return Error(404);
         }
     }
 }
