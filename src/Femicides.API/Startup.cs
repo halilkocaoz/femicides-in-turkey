@@ -18,6 +18,12 @@ namespace Femicides.API
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddCors(o => o.AddPolicy("Policy", builder => {
+                builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+            }));
+
             services.AddDbContext<FemicidesContext>(option => option.UseSqlServer(Configuration.GetConnectionString("Local")));
 
             services.AddControllers();
@@ -29,6 +35,10 @@ namespace Femicides.API
         {
             app.UseDeveloperExceptionPage();
             app.UseHttpsRedirection();
+            app.UseCors("Policy");
+
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
 
             app.UseRouting();
             app.UseEndpoints(endpoints =>
