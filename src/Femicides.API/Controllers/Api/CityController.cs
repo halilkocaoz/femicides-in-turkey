@@ -38,11 +38,11 @@ namespace Femicides.API.Controllers
                 return Error(404);
             }
             var cities = await GetAllCityAsync();
-            KeyValuePair<string, StringValues>[] cityQueries = null;
+            KeyValuePair<string, StringValues>[] requestedQueries = null;
             if(Request.QueryString.HasValue)
             {
-                cityQueries = Request.Query.ToArray();
-                if(cityQueries.Count() == 1 && cityQueries[0].Key.ToLower() == "page")
+                requestedQueries = Request.Query.ToArray();
+                if(requestedQueries.Count() == 1 && requestedQueries[0].Key.ToLower() == "page")
                 {
                     goto breakfilter;
                 }
@@ -52,11 +52,12 @@ namespace Femicides.API.Controllers
                     cities = cities.Where(x => x.Name.ToLower().Contains(name.ToLower())).ToList();
                 }
             }
-
             breakfilter:
-            if(cities.Count > 0)
+            var citiesCountBeforeSkip = cities.Count;
+
+            if(citiesCountBeforeSkip > 0)
             {
-                if(cities.Count > maxDataCountPerPage)
+                if(citiesCountBeforeSkip > maxDataCountPerPage)
                 {
                     cities = cities.Skip(maxDataCountPerPage * (page - 1)).Take(maxDataCountPerPage).ToList();
                 }
@@ -70,7 +71,7 @@ namespace Femicides.API.Controllers
                     victimCount = s.Victim.Count
                 }).ToList();
 
-                return Succes(null, returnData, Pagination(cities.Count,page,cityQueries.ToStringQueries()));
+                return Succes(null, returnData, Pagination(citiesCountBeforeSkip,page,requestedQueries.ToStringQueries()));
             }
 
             return Error(404);

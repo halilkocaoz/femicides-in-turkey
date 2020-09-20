@@ -32,5 +32,42 @@ namespace Femicides.API.Extensions
 
             return "?" + strQueries;
         }
+        public static string NextPage(this String str, int totalPage, int selectedPage, string queries)
+        {
+            if (totalPage > 1 && totalPage > selectedPage)
+            {
+                str += queries;
+                if(string.IsNullOrEmpty(queries))
+                {
+                    str += "?page=" + (selectedPage + 1).ToString();
+                }
+                else
+                {
+                    str += "page=" + (selectedPage + 1).ToString();
+                }
+
+                return str.Replace("&&", "&");
+            }
+
+            return null;
+        }
+        public static string PrevPage(this String str, int totalPage, int selectedPage, string queries)
+        {
+            if(totalPage > 1 && selectedPage > 1)
+            {
+                str += queries;
+                if(string.IsNullOrEmpty(queries))
+                {
+                    str += "?page=" + (selectedPage - 1).ToString();
+                }
+                else
+                {
+                    str += "page=" + (selectedPage - 1).ToString();
+                }
+                return str.Replace("&&","&");
+            }
+
+            return null;
+        }
     }
 }

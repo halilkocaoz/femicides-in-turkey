@@ -1,3 +1,4 @@
+using Femicides.API.Extensions;
 using Femicides.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
@@ -19,8 +20,22 @@ namespace Femicides.API.Controllers
         [NonAction]
         public object Pagination(int count, int selectedPage, string queryString)
         {
-            return null;
+            var totalPages = CalculateTotalPage(count);
+            var requestHostPath = "https://" + Request.Host + Request.Path;
+
+            var info = new
+            {
+                count,
+                pages = totalPages,
+                next = requestHostPath.NextPage(totalPages,selectedPage,queryString),
+                prev = requestHostPath.PrevPage(totalPages,selectedPage,queryString)
+            };
+
+            return info;
         }
+
+        [NonAction]
+        private int CalculateTotalPage(int dataCount) => dataCount % maxDataCountPerPage != 0 ? dataCount / maxDataCountPerPage + 1 : dataCount / maxDataCountPerPage;
 
         [NonAction]
         public IActionResult Succes(string message = null, object data = null, object info = null)
