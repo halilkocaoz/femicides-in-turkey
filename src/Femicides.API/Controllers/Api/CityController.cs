@@ -29,8 +29,10 @@ namespace Femicides.API.Controllers
 
         public async Task<IActionResult> GetAllByFilters([FromQuery] string name, [FromQuery] int most, [FromQuery] int least, [FromQuery] int page = 1)
         {
+            bool IsNeedPagination = true;
             sbyte maxCityPageCount = 9;
             page = System.Math.Abs(page);
+
             if(page > maxCityPageCount)
             {
                 return Error(404);
@@ -47,23 +49,16 @@ namespace Femicides.API.Controllers
 
                 if(most > 0 || least > 0)
                 {
+                    IsNeedPagination = false;
                     if(!string.IsNullOrEmpty(name))
-                    {
-                        return Error(400, "You can not use name filter with most or least filter, please look at the docs.");
-                    }
+                        return Error(400, "You can not use name filter with most or least filters, please look at the docs.");
                     if(most > 0 && least > 0)
-                    {
                         return Error(400, "You can not use most and least filters at the same time, please look at the docs.");
-                    }
 
                     if(most > 0)
-                    {
                         cities = cities.OrderByDescending(x => x.Victim.Count).Take(most).ToList();
-                    }
                     else
-                    {
                         cities = cities.OrderBy(x => x.Victim.Count).Take(least).ToList();
-                    }
                 }
                 else
                 {
@@ -78,7 +73,7 @@ namespace Femicides.API.Controllers
 
             if(citiesCountBeforeSkip > 0)
             {
-                if(citiesCountBeforeSkip > maxDataCountPerPage)
+                if(citiesCountBeforeSkip > maxDataCountPerPage && IsNeedPagination)
                 {
                     cities = cities.Skip(maxDataCountPerPage * (page - 1)).Take(maxDataCountPerPage).ToList();
                 }
@@ -92,7 +87,10 @@ namespace Femicides.API.Controllers
                     victimCount = s.Victim.Count
                 }).ToList();
 
-                return Succes(null, returnData, Pagination(citiesCountBeforeSkip,page,requestedQueries.ToStringQueries()));
+                if(IsNeedPagination)
+                    return Succes(null, returnData, Pagination(citiesCountBeforeSkip,page,requestedQueries.ToStringQueries()));
+                else
+                    return Succes(null, returnData);
             }
 
             return Error(404);
