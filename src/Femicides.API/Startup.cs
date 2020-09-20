@@ -21,6 +21,8 @@ namespace Femicides.API
             services.AddDbContext<FemicidesContext>(option => option.UseSqlServer(Configuration.GetConnectionString("Local")));
 
             services.AddControllers();
+
+            services.AddMemoryCache();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
