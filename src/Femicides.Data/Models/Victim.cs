@@ -19,6 +19,14 @@ namespace Femicides.Data
         public int? PerpetratorId { get; set; }
         public short CityId { get; set; }
         public DateTime Date { get; set; }
+        public string Url
+        {
+            get
+            {
+                return "https://femicidesinturkey.com/api/victim/" + Id;
+            }
+        }
+
         public virtual City City { get; set; }
         public virtual Perpetrator Perpetrator { get; set; }
         public virtual ICollection<VictimCausesOfKilled> VictimCausesOfKilled { get; set; }

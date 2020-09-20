@@ -40,7 +40,7 @@ namespace Femicides.API.Controllers
 
             if(Request.QueryString.HasValue)
             {
-                if(requestedQueries.Count() == 1 && requestedQueries[0].Key.ToLower() == "page")
+                if(requestedQueries.Count() == 1 && requestedQueries[0].Key.ToLower() == "page") //todo: fix duplicated
                 {
                     goto breakfilter;
                 }
