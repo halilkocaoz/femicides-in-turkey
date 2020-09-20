@@ -15,7 +15,7 @@ namespace Femicides.API.Controllers
         public VictimController(IMemoryCache memCache) => memoryCache = memCache;
 
         [NonAction]
-        public async Task<List<Victim>> GetVictims()
+        public async Task<List<Victim>> GetAllVictimAsync()
         {
             var victims = new List<Victim>();
             if(!memoryCache.TryGetValue("victims", out victims))
@@ -43,7 +43,7 @@ namespace Femicides.API.Controllers
             {
                 return Error(404);
             }
-            var victims = await GetVictims();
+            var victims = await GetAllVictimAsync();
 
             var requestedQueries = Request.Query.ToArray();;
             if(Request.QueryString.HasValue)
@@ -129,16 +129,96 @@ namespace Femicides.API.Controllers
             return Error(404);
         }
 
-        [HttpGet("{values}")]
-        public async Task<IActionResult> GetMultipleByIds([FromRoute]string values)
+        [HttpGet("{Ids}")]
+        public async Task<IActionResult> GetMultipleByIds([FromRoute] MultipleModel value)
         {
-            return Succes("You wait patiently in line");
+            if (!ModelState.IsValid)
+            {
+                return Error(400, ModelState.Values.SelectMany(v => v.Errors).FirstOrDefault().ErrorMessage);
+            }
+
+            var victims = await GetAllVictimAsync();
+            var idsArr = value.Ids.Split(",");
+            var requestedVictims = new List<Victim>();
+
+            foreach (var item in idsArr)
+            {
+                if(requestedVictims.Any(x => x.Id == int.Parse(item)))
+                {
+                    continue;
+                }
+                var victim = victims.Where(x => x.Id == int.Parse(item)).FirstOrDefault();
+                if (victim != null)
+                {
+                    requestedVictims.Add(victim);
+                }
+            }
+
+            if(requestedVictims.Count > 0)
+            {
+                var returnData = requestedVictims.Select(s => new
+                {
+                    FullName = s.Name + " " + s.Surname,
+                    City = s.City.Name,
+                    Killer = new
+                    {
+                        s.Perpetrator.Definition,
+                        s.Perpetrator.Status
+                    },
+                    Methods = s.VictimMethodsOfKilled.Select(ms => new
+                    {
+                        ms.Method
+                    }).ToArray(),
+                    Causes = s.VictimCausesOfKilled.Select(ks => new
+                    {
+                        ks.Cause
+                    }).ToArray(),
+                    s.Adult,
+                    s.ProtectionRequest,
+                    year = s.Date.Year.ToString(),
+                    s.Url
+                }).ToList();
+
+                return Succes(null, returnData);
+            }
+
+            return Error(404);
         }
 
-        [HttpGet("{value:int}")]
+        [HttpGet("{id:int}")]
         public async Task<IActionResult> GetSingleById([FromRoute]int value)
         {
-            return Succes("I will make you coffee with extra cream");
+            var victims = await GetAllVictimAsync();
+
+            var victim = victims.Where(x=> x.Id == value).Select(s => new
+            {
+                FullName = s.Name + " " + s.Surname,
+                City = s.City.Name,
+                Killer = new
+                {
+                    s.Perpetrator.Definition,
+                    s.Perpetrator.Status
+                },
+                Methods = s.VictimMethodsOfKilled.Select(ms => new
+                {
+                    ms.Method
+                }).ToArray(),
+                Causes = s.VictimCausesOfKilled.Select(ks => new
+                {
+                    ks.Cause
+                }).ToArray(),
+                s.Adult,
+                s.ProtectionRequest,
+                year = s.Date.Year.ToString(),
+                s.Url
+            }).FirstOrDefault();
+
+            if(victim != null)
+            {
+                return Succes(null, victim);
+            }
+
+            return Error(404);
         }
     }
 }
