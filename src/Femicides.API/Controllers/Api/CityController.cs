@@ -27,7 +27,7 @@ namespace Femicides.API.Controllers
             return cities;
         }
 
-        public async Task<IActionResult> GetAllByFilters([FromQuery] string name,[FromQuery] int page = 1)
+        public async Task<IActionResult> GetAllByFilters([FromQuery] string name, [FromQuery] int most, [FromQuery] int least, [FromQuery] int page = 1)
         {
             sbyte maxCityPageCount = 9;
             page = System.Math.Abs(page);
@@ -45,9 +45,32 @@ namespace Femicides.API.Controllers
                     goto breakfilter;
                 }
 
-                if(!string.IsNullOrEmpty(name))
+                if(most > 0 || least > 0)
                 {
-                    cities = cities.Where(x => x.Name.ToLower().Contains(name.ToLower())).ToList();
+                    if(!string.IsNullOrEmpty(name))
+                    {
+                        return Error(400, "You can not use name filter with most or least filter, please look at the docs.");
+                    }
+                    if(most > 0 && least > 0)
+                    {
+                        return Error(400, "You can not use most and least filters at the same time, please look at the docs.");
+                    }
+
+                    if(most > 0)
+                    {
+                        cities = cities.OrderByDescending(x => x.Victim.Count).Take(most).ToList();
+                    }
+                    else
+                    {
+                        cities = cities.OrderBy(x => x.Victim.Count).Take(least).ToList();
+                    }
+                }
+                else
+                {
+                    if(!string.IsNullOrEmpty(name))
+                    {
+                        cities = cities.Where(x => x.Name.ToLower().Contains(name.ToLower())).ToList();
+                    }
                 }
             }
             breakfilter:
