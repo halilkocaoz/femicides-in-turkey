@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,7 +8,8 @@ namespace Femicides.API.Controllers
     {
         public async Task<IActionResult> GetAllByFilters([FromQuery]string exampleFilter)
         {
-            return Succes("Every morning around nine");
+            object p = Context.Victim.ToList();
+            return Succes("Every morning around nine", p);
         }
 
         [HttpGet("{values}")]

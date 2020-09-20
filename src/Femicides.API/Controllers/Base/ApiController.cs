@@ -1,3 +1,4 @@
+using Femicides.Data;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Femicides.API.Controllers
@@ -5,6 +6,8 @@ namespace Femicides.API.Controllers
     [Route("api/[controller]")]
     public class ApiController : ControllerBase
     {
+        public FemicidesContext Context => (FemicidesContext)HttpContext?.RequestServices.GetService(typeof(FemicidesContext));
+
         [NonAction]
         public IActionResult Succes(string message = null, object data = null, object info = null)
         {
