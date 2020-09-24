@@ -40,13 +40,8 @@ namespace Femicides.API.Controllers
             var cities = await GetAllCityAsync();
             var requestedQueries = Request.Query.ToArray();
 
-            if(Request.QueryString.HasValue)
+            if(requestedQueries.AreThereNecessaryQueries())
             {
-                if(requestedQueries.Count() == 1 && requestedQueries[0].Key.ToLower() == "page") //todo: fix duplicated
-                {
-                    goto breakfilter;
-                }
-
                 if(most > 0 || least > 0)
                 {
                     IsNeedPagination = false;
@@ -68,9 +63,7 @@ namespace Femicides.API.Controllers
                     }
                 }
             }
-            breakfilter:
             var citiesCountBeforeSkip = cities.Count;
-
             if(citiesCountBeforeSkip > 0)
             {
                 if(citiesCountBeforeSkip > maxDataCountPerPage && IsNeedPagination)

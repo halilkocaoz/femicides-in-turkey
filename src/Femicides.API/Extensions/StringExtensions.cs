@@ -8,9 +8,21 @@ namespace Femicides.API.Extensions
 {
     public static class StringExtensions
     {
+        public static bool AreThereNecessaryQueries(this KeyValuePair<string, StringValues>[] queries)
+        {
+            switch (queries.Count())
+            {
+                case 0:
+                case 1 when queries[0].Key.ToLower() == "page":
+                    return false;
+                default:
+                    return true;
+            }
+        }
+
         public static string ToStringQueries(this KeyValuePair<string, StringValues>[] queries)
         {
-            if(queries == null || (queries.Count() == 1 && queries[0].Key.ToLower() == "page"))
+            if(!queries.AreThereNecessaryQueries())
             {
                 return null;
             }

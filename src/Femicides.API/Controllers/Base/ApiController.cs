@@ -13,7 +13,7 @@ namespace Femicides.API.Controllers
         public FemicidesContext Context => (FemicidesContext)HttpContext?.RequestServices.GetService(typeof(FemicidesContext));
         public MemoryCacheEntryOptions MemoryCacheExpOptions = new MemoryCacheEntryOptions
         {
-            AbsoluteExpiration = System.DateTime.Now.AddHours(1),
+            AbsoluteExpiration = System.DateTime.Now.AddDays(1),
             Priority = CacheItemPriority.High
         };
 

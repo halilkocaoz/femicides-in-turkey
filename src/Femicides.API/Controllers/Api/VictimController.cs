@@ -43,16 +43,11 @@ namespace Femicides.API.Controllers
             {
                 return Error(404);
             }
-            var victims = await GetAllVictimAsync();
 
-            var requestedQueries = Request.Query.ToArray();;
-            if(Request.QueryString.HasValue)
+            var victims = await GetAllVictimAsync();
+            var requestedQueries = Request.Query.ToArray();
+            if(requestedQueries.AreThereNecessaryQueries())
             {
-                if(requestedQueries.Count() == 1 && requestedQueries[0].Key.ToLower() == "page") //todo: fix duplicated
-                {
-                    goto breakfilter;
-                }
-                #region Filter
                 if(!string.IsNullOrEmpty(name))
                 {
                     victims = victims.Where(x => x.Name.ToLower().Contains(name.ToLower())).ToList();
@@ -89,9 +84,7 @@ namespace Femicides.API.Controllers
                 {
                     victims = victims.Where(x => x.Perpetrator.Definition.ToLower().Contains(killer.ToLower())).ToList();
                 }
-                #endregion
             }
-            breakfilter:
             var victimsCountBeforeSkip = victims.Count;
             if (victimsCountBeforeSkip > 0)
             {
@@ -185,7 +178,7 @@ namespace Femicides.API.Controllers
             return Error(404);
         }
 
-        [HttpGet("{id:int}")]
+        [HttpGet("{value:int}")]
         public async Task<IActionResult> GetSingleById([FromRoute]int value)
         {
             var victims = await GetAllVictimAsync();
