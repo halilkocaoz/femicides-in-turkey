@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Femicides.API.Extensions;
-using Femicides.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -11,22 +10,34 @@ namespace Femicides.API.Controllers
 {
     public class CityController : ApiController // todo: const select statement
     {
+        public class CityReturnModel
+        {
+            public int Id { get; set; }
+            public string Name { get; set; }
+            public string FilterUrl { get; set; }
+            public string Url { get; set; }
+            public int VictimCount { get; set; }
+        }
         private readonly IMemoryCache memoryCache;
         public CityController(IMemoryCache memCache) => memoryCache = memCache;
-
         [NonAction] // todo repo
-        public async Task<List<City>> GetAllCityAsync()
+        public async Task<List<CityReturnModel>> GetAllCityAsync()
         {
-            var cities = new List<City>();
+            var cities = new List<CityReturnModel>();
             if(!memoryCache.TryGetValue("cities", out cities))
             {
-                cities = await Context.City.Include(x => x.Victim).ToListAsync();
+                cities = await Context.City.Include(x => x.Victim).Select(s => new CityReturnModel
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    FilterUrl = s.FilterUrl,
+                    Url = s.Url,
+                    VictimCount = s.Victim.Count
+                }).ToListAsync();
                 memoryCache.Set("cities", cities, MemoryCacheExpOptions);
             }
-
             return cities;
         }
-
         public async Task<IActionResult> GetAllByFilters([FromQuery] string name, [FromQuery] int most, [FromQuery] int least, [FromQuery] int page = 1)
         {
             bool IsNeedPagination = true;
@@ -51,9 +62,9 @@ namespace Femicides.API.Controllers
                         return Error(400, "You can not use most and least filters at the same time, please look at the docs.");
 
                     if(most > 0)
-                        cities = cities.OrderByDescending(x => x.Victim.Count).Take(most).ToList();
+                        cities = cities.OrderByDescending(x => x.VictimCount).Take(most).ToList();
                     else
-                        cities = cities.OrderBy(x => x.Victim.Count).Take(least).ToList();
+                        cities = cities.OrderBy(x => x.VictimCount).Take(least).ToList();
                 }
                 else
                 {
@@ -70,20 +81,7 @@ namespace Femicides.API.Controllers
                 {
                     cities = cities.Skip(maxDataCountPerPage * (page - 1)).Take(maxDataCountPerPage).ToList();
                 }
-
-                var returnData = cities.Select(s => new //todo const select statement
-                {
-                    s.Id,
-                    s.Name,
-                    s.FilterUrl,
-                    s.Url,
-                    victimCount = s.Victim.Count
-                }).ToList();
-
-                if(IsNeedPagination)
-                    return Succes(null, returnData, Pagination(citiesCountBeforeSkip,page,requestedQueries.ToStringQueries()));
-                else
-                    return Succes(null, returnData);
+                return IsNeedPagination ? Succes(null, cities, Pagination(citiesCountBeforeSkip,page,requestedQueries.ToStringQueries())) : Succes(null, cities);
             }
 
             return Error(404);
@@ -96,10 +94,9 @@ namespace Femicides.API.Controllers
             {
                 return Error(400, ModelState.Values.SelectMany(v => v.Errors).FirstOrDefault().ErrorMessage);
             }
-
             var cities = await GetAllCityAsync();
             var idsArr = value.Ids.Split(",");
-            var requestedCities = new List<City>();
+            var requestedCities = new List<CityReturnModel>();
 
             foreach (var item in idsArr)
             {
@@ -116,40 +113,16 @@ namespace Femicides.API.Controllers
                 }
             }
 
-            if (requestedCities.Count > 0)
-            {
-                var returnData = requestedCities.Select(s => new
-                {
-                    s.Id,
-                    s.Name,
-                    s.FilterUrl,
-                    s.Url,
-                    victimCount = s.Victim.Count
-                }).ToList();
-
-                return Succes(null, returnData);
-            }
-
-            return Error(404);
+            return requestedCities.Count > 0 ? Succes(null, requestedCities) : Error(404);
         }
 
         [HttpGet("{value:int}")]
         public async Task<IActionResult> GetSingleById([FromRoute]int value)
         {
             var cities = await GetAllCityAsync();
-            var city = cities.Where(x=> x.Id == value).Select(s => new
-            {
-                s.Id,
-                s.Name,
-                s.FilterUrl,
-                s.Url,
-                victimCount = s.Victim.Count
-            }).FirstOrDefault();
-            if(city != null)
-            {
-                return Succes(null, city);
-            }
-            return Error(404);
+            var city = cities.FirstOrDefault(x=> x.Id == value);
+
+            return city != null ? Succes(null, city) : Error(404);
         }
     }
 }

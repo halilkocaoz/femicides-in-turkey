@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Femicides.API.Extensions;
-using Femicides.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -13,52 +12,84 @@ namespace Femicides.API.Controllers
     {
         private readonly IMemoryCache memoryCache;
         public VictimController(IMemoryCache memCache) => memoryCache = memCache;
-
-        [NonAction]
-        public async Task<List<Victim>> GetAllVictimAsync()
+        #region models
+        public class PerpetratorReturnModel
         {
-            var victims = new List<Victim>();
+            public string Definition { get; set; }
+            public string Status { get; set; }
+        }
+        public class MethodsReturnModel
+        {
+            public string Method { get; set; }
+        }
+        public class CausesReturnModel
+        {
+            public string Cause { get; set; }
+        }
+        public class VictimReturnModel
+        {
+            public int Id { get; set; }
+            public string FullName { get; set; }
+            public string City { get; set; }
+            public PerpetratorReturnModel Killer { get; set; }
+            public List<MethodsReturnModel> Methods { get; set; }
+            public List<CausesReturnModel> Causes { get; set; }
+            public bool? Adult { get; set; }
+            public bool? ProtectionRequest { get; set; }
+            public int Year { get; set;}
+            public string Url { get; set;}
+        }
+        #endregion
+        [NonAction]
+        public async Task<List<VictimReturnModel>> GetAllVictimAsync()
+        {
+            var victims = new List<VictimReturnModel>();
             if(!memoryCache.TryGetValue("victims", out victims))
             {
                 victims = await Context.Victim.
-                Include(victim => victim.VictimCausesOfKilled).
-                Include(victim => victim.VictimMethodsOfKilled).
+                Include(victim => victim.VictimCausesOfKilled).Include(victim => victim.VictimMethodsOfKilled).
                 Include(victim => victim.Perpetrator).
                 Include(victim => victim.City).
-                OrderByDescending(victim => victim.Id).ToListAsync();
-
+                OrderByDescending(victim => victim.Id).
+                Select(s => new VictimReturnModel
+                {
+                    Id = s.Id,
+                    FullName = s.Name + " " + s.Surname,
+                    City = s.City.Name,
+                    Killer = new PerpetratorReturnModel { Definition = s.Perpetrator.Definition, Status = s.Perpetrator.Status },
+                    Methods = s.VictimMethodsOfKilled.Select(ms => new MethodsReturnModel { Method = ms.Method }).ToList(),
+                    Causes = s.VictimCausesOfKilled.Select(ks => new CausesReturnModel { Cause = ks.Cause }).ToList(),
+                    Adult = s.Adult,
+                    ProtectionRequest = s.ProtectionRequest,
+                    Year = s.Date.Year,
+                    Url = s.Url
+                }).ToListAsync();
                 memoryCache.Set("victims", victims, MemoryCacheExpOptions);
             }
-
             return victims;
         }
-        public async Task<IActionResult> GetAllByFilters(
+        public async Task<IActionResult> GetAllByFilters( //todo: name, surname => fullname
             [FromQuery] string name, [FromQuery] string surname, [FromQuery] string city,
             [FromQuery] bool? adult, [FromQuery] bool? protectionRequest, [FromQuery] string killer,
-            [FromQuery] string method, [FromQuery] string cause, [FromQuery] string year, [FromQuery] int page = 1)
+            [FromQuery] string method, [FromQuery] string cause, [FromQuery] int year, [FromQuery] int page = 1)
         {
-            const int maxVictimPageCount = 400;
             page = System.Math.Abs(page);
-            if (page > maxVictimPageCount)
-            {
-                return Error(404);
-            }
-
             var victims = await GetAllVictimAsync();
             var requestedQueries = Request.Query.ToArray();
+
             if(requestedQueries.AreThereNecessaryQueries())
             {
                 if(!string.IsNullOrEmpty(name))
                 {
-                    victims = victims.Where(x => x.Name.ToLower().Contains(name.ToLower())).ToList();
+                    victims = victims.Where(x => x.FullName.ToLower().Contains(name.ToLower())).ToList();
                 }
                 if(!string.IsNullOrEmpty(surname) && victims.Count > 0)
                 {
-                    victims = victims.Where(x => x.Surname.ToLower().Contains(surname.ToLower())).ToList();
+                    victims = victims.Where(x => x.FullName.ToLower().Contains(surname.ToLower())).ToList();
                 }
                 if(!string.IsNullOrEmpty(city) && victims.Count > 0)
                 {
-                    victims = victims.Where(x => x.City.Name.ToLower().Contains(city.ToLower())).ToList();
+                    victims = victims.Where(x => x.City.ToLower().Contains(city.ToLower())).ToList();
                 }
                 if(adult.HasValue && victims.Count > 0)
                 {
@@ -70,19 +101,19 @@ namespace Femicides.API.Controllers
                 }
                 if(!string.IsNullOrEmpty(method) && victims.Count > 0)
                 {
-                    victims = victims.Where(x => x.VictimMethodsOfKilled.Any(x => x.Method.ToLower() == method.ToLower())).ToList();
+                    victims = victims.Where(x => x.Methods.Any(x => x.Method.ToLower() == method.ToLower())).ToList();
                 }
-                if(!string.IsNullOrEmpty(year) && victims.Count > 0)
+                if(year > 0 && victims.Count > 0)
                 {
-                    victims = victims.Where(x => x.Date.Year.ToString() == year).ToList();
+                    victims = victims.Where(x => x.Year == year).ToList();
                 }
                 if(!string.IsNullOrEmpty(cause) && victims.Count > 0)
                 {
-                    victims = victims.Where(x => x.VictimCausesOfKilled.Any(x => x.Cause.ToLower() == cause.ToLower())).ToList();
+                    victims = victims.Where(x => x.Causes.Any(x => x.Cause.ToLower() == cause.ToLower())).ToList();
                 }
                 if(!string.IsNullOrEmpty(killer) && victims.Count > 0)
                 {
-                    victims = victims.Where(x => x.Perpetrator.Definition.ToLower().Contains(killer.ToLower())).ToList();
+                    victims = victims.Where(x => x.Killer.Definition.ToLower().Contains(killer.ToLower())).ToList();
                 }
             }
             var victimsCountBeforeSkip = victims.Count;
@@ -93,30 +124,7 @@ namespace Femicides.API.Controllers
                     victims = victims.Skip(maxDataCountPerPage * (page - 1)).Take(maxDataCountPerPage).ToList();
                 }
 
-                var returnData = victims.Select(s => new
-                {
-                    FullName = s.Name + " " + s.Surname,
-                    City = s.City.Name,
-                    Killer = new
-                    {
-                        s.Perpetrator.Definition,
-                        s.Perpetrator.Status
-                    },
-                    Methods = s.VictimMethodsOfKilled.Select(ms => new
-                    {
-                        ms.Method
-                    }).ToArray(),
-                    Causes = s.VictimCausesOfKilled.Select(ks => new
-                    {
-                        ks.Cause
-                    }).ToArray(),
-                    s.Adult,
-                    s.ProtectionRequest,
-                    year = s.Date.Year.ToString(),
-                    s.Url
-                }).ToList();
-
-                return Succes(null, returnData, Pagination(victimsCountBeforeSkip,page,requestedQueries.ToStringQueries()));
+                return Succes(null, victims, Pagination(victimsCountBeforeSkip,page,requestedQueries.ToStringQueries()));
             }
 
             return Error(404);
@@ -132,7 +140,7 @@ namespace Femicides.API.Controllers
 
             var victims = await GetAllVictimAsync();
             var idsArr = value.Ids.Split(",");
-            var requestedVictims = new List<Victim>();
+            var requestedVictims = new List<VictimReturnModel>();
 
             foreach (var item in idsArr)
             {
@@ -146,72 +154,15 @@ namespace Femicides.API.Controllers
                     requestedVictims.Add(victim);
                 }
             }
-
-            if(requestedVictims.Count > 0)
-            {
-                var returnData = requestedVictims.Select(s => new
-                {
-                    FullName = s.Name + " " + s.Surname,
-                    City = s.City.Name,
-                    Killer = new
-                    {
-                        s.Perpetrator.Definition,
-                        s.Perpetrator.Status
-                    },
-                    Methods = s.VictimMethodsOfKilled.Select(ms => new
-                    {
-                        ms.Method
-                    }).ToArray(),
-                    Causes = s.VictimCausesOfKilled.Select(ks => new
-                    {
-                        ks.Cause
-                    }).ToArray(),
-                    s.Adult,
-                    s.ProtectionRequest,
-                    year = s.Date.Year.ToString(),
-                    s.Url
-                }).ToList();
-
-                return Succes(null, returnData);
-            }
-
-            return Error(404);
+            return requestedVictims.Count > 0 ? Succes(null, requestedVictims) : Error(404);
         }
 
         [HttpGet("{value:int}")]
         public async Task<IActionResult> GetSingleById([FromRoute]int value)
         {
             var victims = await GetAllVictimAsync();
-
-            var victim = victims.Where(x=> x.Id == value).Select(s => new
-            {
-                FullName = s.Name + " " + s.Surname,
-                City = s.City.Name,
-                Killer = new
-                {
-                    s.Perpetrator.Definition,
-                    s.Perpetrator.Status
-                },
-                Methods = s.VictimMethodsOfKilled.Select(ms => new
-                {
-                    ms.Method
-                }).ToArray(),
-                Causes = s.VictimCausesOfKilled.Select(ks => new
-                {
-                    ks.Cause
-                }).ToArray(),
-                s.Adult,
-                s.ProtectionRequest,
-                year = s.Date.Year.ToString(),
-                s.Url
-            }).FirstOrDefault();
-
-            if(victim != null)
-            {
-                return Succes(null, victim);
-            }
-
-            return Error(404);
+            var victim = victims.FirstOrDefault(x=> x.Id == value);
+            return victim != null ? Succes(null, victim) : Error(404);
         }
     }
 }

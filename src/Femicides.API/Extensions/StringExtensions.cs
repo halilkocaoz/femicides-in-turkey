@@ -19,14 +19,12 @@ namespace Femicides.API.Extensions
                     return true;
             }
         }
-
         public static string ToStringQueries(this KeyValuePair<string, StringValues>[] queries)
         {
             if(!queries.AreThereNecessaryQueries())
             {
                 return null;
             }
-
             StringBuilder strQueries = new StringBuilder();
             var i = 0;
             foreach (var item in queries)
@@ -44,41 +42,36 @@ namespace Femicides.API.Extensions
 
             return "?" + strQueries;
         }
-        public static string NextPage(this String str, int totalPage, int selectedPage, string queries)
+        public static string NextPage(this String url, int totalPage, int selectedPage, string queries)
         {
             if (totalPage > 1 && totalPage > selectedPage)
             {
-                str += queries;
                 if(string.IsNullOrEmpty(queries))
                 {
-                    str += "?page=" + (selectedPage + 1).ToString();
+                    url += "?page=" + (selectedPage + 1).ToString();
                 }
                 else
                 {
-                    str += "page=" + (selectedPage + 1).ToString();
+                    url += queries + "page=" + (selectedPage + 1).ToString();
                 }
-
-                return str.Replace("&&", "&");
+                return url.Replace("&&", "&");
             }
-
             return null;
         }
-        public static string PrevPage(this String str, int totalPage, int selectedPage, string queries)
+        public static string PrevPage(this String url, int totalPage, int selectedPage, string queries)
         {
             if(totalPage > 1 && selectedPage > 1)
             {
-                str += queries;
                 if(string.IsNullOrEmpty(queries))
                 {
-                    str += "?page=" + (selectedPage - 1).ToString();
+                    url += "?page=" + (selectedPage - 1).ToString();
                 }
                 else
                 {
-                    str += "page=" + (selectedPage - 1).ToString();
+                    url += queries + "page=" + (selectedPage - 1).ToString();
                 }
-                return str.Replace("&&","&");
+                return url.Replace("&&","&");
             }
-
             return null;
         }
     }
