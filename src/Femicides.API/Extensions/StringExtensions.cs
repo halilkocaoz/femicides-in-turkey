@@ -19,58 +19,36 @@ namespace Femicides.API.Extensions
                     return true;
             }
         }
-        public static string ToStringQueries(this KeyValuePair<string, StringValues>[] queries)
+        public static string ToStringWithOutPageParam(this KeyValuePair<string, StringValues>[] queries)
         {
             if(!queries.AreThereNecessaryQueries())
             {
                 return null;
             }
             StringBuilder strQueries = new StringBuilder();
-            var i = 0;
-            foreach (var item in queries)
+            for (int i = 0; i < queries.Length; i++)
             {
-                if(item.Key.ToLower() != "page")
+                if(queries[i].Key == "page")
                 {
-                    strQueries.Append(item.Key + "=" + item.Value.FirstOrDefault().Replace(" ", "%20"));
+                    continue;
                 }
-                if (queries.Count() > i)
-                {
-                    strQueries.Append('&');
-                }
-                i++;
+                strQueries.Append(queries[i].Key + "=" + queries[i].Value.FirstOrDefault().Replace(" ", "%20") + "&");
             }
-
-            return "?" + strQueries;
+            return "?" + strQueries.Remove(strQueries.Length - 1, 1);
         }
-        public static string NextPage(this String url, int totalPage, int selectedPage, string queries)
+        public static string RequestedUrlPaginationWithParams(this String requestedHostPath, int totalPage, int selectedPage, string queries, int jump)
         {
-            if (totalPage > 1 && totalPage > selectedPage)
+            if (totalPage > 1 && (totalPage > selectedPage && jump == 1) || (selectedPage > 1 && jump == -1))
             {
                 if(string.IsNullOrEmpty(queries))
                 {
-                    url += "?page=" + (selectedPage + 1).ToString();
+                    requestedHostPath += "?page=" + (selectedPage + jump).ToString();
                 }
                 else
                 {
-                    url += queries + "page=" + (selectedPage + 1).ToString();
+                    requestedHostPath += queries + "&page=" + (selectedPage + jump).ToString();
                 }
-                return url.Replace("&&", "&");
-            }
-            return null;
-        }
-        public static string PrevPage(this String url, int totalPage, int selectedPage, string queries)
-        {
-            if(totalPage > 1 && selectedPage > 1)
-            {
-                if(string.IsNullOrEmpty(queries))
-                {
-                    url += "?page=" + (selectedPage - 1).ToString();
-                }
-                else
-                {
-                    url += queries + "page=" + (selectedPage - 1).ToString();
-                }
-                return url.Replace("&&","&");
+                return requestedHostPath;
             }
             return null;
         }

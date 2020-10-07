@@ -40,10 +40,12 @@ namespace Femicides.API.Controllers
             public string Url { get; set;}
         }
         #endregion
+
+        List<VictimReturnModel> victims = new List<VictimReturnModel>();
+
         [NonAction]
         public async Task<List<VictimReturnModel>> GetAllVictimAsync()
         {
-            var victims = new List<VictimReturnModel>();
             if(!memoryCache.TryGetValue("victims", out victims))
             {
                 victims = await Context.Victim.
@@ -64,17 +66,18 @@ namespace Femicides.API.Controllers
                     Year = s.Date.Year,
                     Url = s.Url
                 }).ToListAsync();
-                memoryCache.Set("victims", victims, MemoryCacheExpOptions);
+                memoryCache.Set("victims", victims, System.DateTime.Now.AddDays(1));
             }
             return victims;
         }
         public async Task<IActionResult> GetAllByFilters( //todo: name, surname => fullname
             [FromQuery] string name, [FromQuery] string surname, [FromQuery] string city,
             [FromQuery] bool? adult, [FromQuery] bool? protectionRequest, [FromQuery] string killer,
-            [FromQuery] string method, [FromQuery] string cause, [FromQuery] int year, [FromQuery] int page = 1)
+            [FromQuery] string method, [FromQuery] string cause, [FromQuery] int year, [FromQuery] int page)
         {
+            if (page == 0) page = 1;
             page = System.Math.Abs(page);
-            var victims = await GetAllVictimAsync();
+            victims = await GetAllVictimAsync();
             var requestedQueries = Request.Query.ToArray();
 
             if(requestedQueries.AreThereNecessaryQueries())
@@ -124,7 +127,7 @@ namespace Femicides.API.Controllers
                     victims = victims.Skip(maxDataCountPerPage * (page - 1)).Take(maxDataCountPerPage).ToList();
                 }
 
-                return Succes(null, victims, Pagination(victimsCountBeforeSkip,page,requestedQueries.ToStringQueries()));
+                return Succes(null, victims, Information(victimsCountBeforeSkip,page,requestedQueries));
             }
 
             return Error(404);
@@ -138,7 +141,7 @@ namespace Femicides.API.Controllers
                 return Error(400, ModelState.Values.SelectMany(v => v.Errors).FirstOrDefault().ErrorMessage);
             }
 
-            var victims = await GetAllVictimAsync();
+            victims = await GetAllVictimAsync();
             var idsArr = value.Ids.Split(",");
             var requestedVictims = new List<VictimReturnModel>();
 
@@ -154,13 +157,14 @@ namespace Femicides.API.Controllers
                     requestedVictims.Add(victim);
                 }
             }
+
             return requestedVictims.Count > 0 ? Succes(null, requestedVictims) : Error(404);
         }
 
         [HttpGet("{value:int}")]
         public async Task<IActionResult> GetSingleById([FromRoute]int value)
         {
-            var victims = await GetAllVictimAsync();
+            victims = await GetAllVictimAsync();
             var victim = victims.FirstOrDefault(x=> x.Id == value);
             return victim != null ? Succes(null, victim) : Error(404);
         }

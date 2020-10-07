@@ -1,7 +1,8 @@
 using Femicides.API.Extensions;
 using Femicides.Data;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
+using System.Collections.Generic;
+using Microsoft.Extensions.Primitives;
 
 namespace Femicides.API.Controllers
 {
@@ -9,33 +10,24 @@ namespace Femicides.API.Controllers
     public class ApiController : ControllerBase
     {
         public static readonly sbyte maxDataCountPerPage = 10;
-
         public FemicidesContext Context => (FemicidesContext)HttpContext?.RequestServices.GetService(typeof(FemicidesContext));
-        public MemoryCacheEntryOptions MemoryCacheExpOptions = new MemoryCacheEntryOptions
-        {
-            AbsoluteExpiration = System.DateTime.Now.AddDays(1),
-            Priority = CacheItemPriority.High
-        };
 
         [NonAction]
-        public object Pagination(int count, int selectedPage, string queryString)
+        public object Information(int count, int selectedPage, KeyValuePair<string, StringValues>[] queries)
         {
-            var totalPages = CalculateTotalPage(count);
+            var queryString = queries.ToStringWithOutPageParam();
+            var totalPages = count % maxDataCountPerPage != 0 ? count / maxDataCountPerPage + 1 : count / maxDataCountPerPage;
             var requestHostPath = "https://" + Request.Host + Request.Path;
 
             var info = new
             {
                 count,
                 pages = totalPages,
-                next = requestHostPath.NextPage(totalPages,selectedPage,queryString),
-                prev = requestHostPath.PrevPage(totalPages,selectedPage,queryString)
+                next = requestHostPath.RequestedUrlPaginationWithParams(totalPages,selectedPage,queryString,1),
+                prev = requestHostPath.RequestedUrlPaginationWithParams(totalPages,selectedPage,queryString,-1)
             };
-
             return info;
         }
-
-        [NonAction]
-        private int CalculateTotalPage(int dataCount) => dataCount % maxDataCountPerPage != 0 ? dataCount / maxDataCountPerPage + 1 : dataCount / maxDataCountPerPage;
 
         [NonAction]
         public IActionResult Succes(string message = null, object data = null, object info = null)
@@ -46,7 +38,6 @@ namespace Femicides.API.Controllers
                 Information = info,
                 Data = data,
             };
-
             return Ok(rm);
         }
 
@@ -65,10 +56,8 @@ namespace Femicides.API.Controllers
                 {
                     rm.Message = "There's nothing here";
                 }
-
                 return NotFound(rm);
             }
-
             return BadRequest(rm);
         }
     }
