@@ -70,10 +70,11 @@ namespace Femicides.API.Controllers
             }
             return victims;
         }
-        public async Task<IActionResult> GetAllByFilters( //todo: name, surname => fullname
+        public async Task<IActionResult> GetAllByFilters(
             [FromQuery] string name, [FromQuery] string surname, [FromQuery] string city,
             [FromQuery] bool? adult, [FromQuery] bool? protectionRequest, [FromQuery] string killer,
-            [FromQuery] string method, [FromQuery] string cause, [FromQuery] int year, [FromQuery] int page)
+            [FromQuery] string method, [FromQuery] string cause, [FromQuery] int year, [FromQuery] int page
+        )
         {
             if (page == 0) page = 1;
             page = System.Math.Abs(page);
