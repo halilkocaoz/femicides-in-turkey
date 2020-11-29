@@ -46,7 +46,7 @@ namespace Femicides.API.Controllers
             page = System.Math.Abs(page);
             if(page > 9)// cities's max page count : 9
             {
-                return Error(404);
+                return Warn(204);
             }
 
             bool IsNeedPagination = true;
@@ -59,11 +59,11 @@ namespace Femicides.API.Controllers
                 {
                     if(!string.IsNullOrEmpty(name))
                     {
-                        return Error(400, "You can not use name filter with most or least filters, please look at the docs.");
+                        return Warn(400, "You can not use name filter with most or least filters, please look at the docs.");
                     }
                     if(most > 0 && least > 0)
                     {
-                        return Error(400, "You can not use most and least filters at the same time, please look at the docs.");
+                        return Warn(400, "You can not use most and least filters at the same time, please look at the docs.");
                     }
                     if(most > 0)
                     {
@@ -89,7 +89,7 @@ namespace Femicides.API.Controllers
                 }
                 return IsNeedPagination ? Succes(null, cities, Information(citiesCountBeforeSkip,page,requestedQueries)) : Succes(null, cities);
             }
-            return Error(404);
+            return Warn(204);
         }
 
         [HttpGet("{Ids}")]
@@ -97,7 +97,7 @@ namespace Femicides.API.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return Error(400, ModelState.Values.SelectMany(v => v.Errors).FirstOrDefault().ErrorMessage);
+                return Warn(400, ModelState.Values.SelectMany(v => v.Errors).FirstOrDefault().ErrorMessage);
             }
             cities = await GetAllCityAsync();
             var idsArr = value.Ids.Split(",");
@@ -118,7 +118,7 @@ namespace Femicides.API.Controllers
                 }
             }
 
-            return requestedCities.Count > 0 ? Succes(null, requestedCities) : Error(404);
+            return requestedCities.Count > 0 ? Succes(null, requestedCities) : Warn(204);
         }
 
         [HttpGet("{value:int}")]
@@ -127,7 +127,7 @@ namespace Femicides.API.Controllers
             cities = await GetAllCityAsync();
             var city = cities.FirstOrDefault(x=> x.Id == value);
 
-            return city != null ? Succes(null, city) : Error(404);
+            return city != null ? Succes(null, city) : Warn(204);
         }
     }
 }

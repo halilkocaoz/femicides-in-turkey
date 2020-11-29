@@ -131,7 +131,7 @@ namespace Femicides.API.Controllers
                 return Succes(null, victims, Information(victimsCountBeforeSkip,page,requestedQueries));
             }
 
-            return Error(404);
+            return Warn(204);
         }
 
         [HttpGet("{Ids}")]
@@ -139,7 +139,7 @@ namespace Femicides.API.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return Error(400, ModelState.Values.SelectMany(v => v.Errors).FirstOrDefault().ErrorMessage);
+                return Warn(400, ModelState.Values.SelectMany(v => v.Errors).FirstOrDefault().ErrorMessage);
             }
 
             victims = await GetAllVictimAsync();
@@ -159,7 +159,7 @@ namespace Femicides.API.Controllers
                 }
             }
 
-            return requestedVictims.Count > 0 ? Succes(null, requestedVictims) : Error(404);
+            return requestedVictims.Count > 0 ? Succes(null, requestedVictims) : Warn(204);
         }
 
         [HttpGet("{value:int}")]
@@ -167,7 +167,7 @@ namespace Femicides.API.Controllers
         {
             victims = await GetAllVictimAsync();
             var victim = victims.FirstOrDefault(x=> x.Id == value);
-            return victim != null ? Succes(null, victim) : Error(404);
+            return victim != null ? Succes(null, victim) : Warn(204);
         }
     }
 }
